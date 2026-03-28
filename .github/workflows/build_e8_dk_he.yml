@@ -1,0 +1,63 @@
+name: Alif E8 DevKit CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    container:
+      image: ghcr.io/zephyrproject-rtos/ci:latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.12
+         
+      - name: Install west
+        run: pip install west
+
+      - name: Initialize SDK workspace
+        run: |
+          west init -l .
+          west update
+
+      - name: Debug workspace
+        run: |
+          pwd
+          ls -R | head -100
+
+      - name: Setup Zephyr environment
+        run: |
+          pwd
+          export ZEPHYR_BASE=$PWD/zephyr
+          echo $ZEPHYR_BASE
+          export ZEPHYR_SDK_INSTALL_DIR=/opt/toolchains/zephyr-sdk
+          pip install -r $ZEPHYR_BASE/scripts/requirements.txt
+          west config zephyr.base $ZEPHYR_BASE
+
+          #      export ZEPHYR_SDK_INSTALL_DIR=/opt/toolchains/zephyr-sdk
+          #          west zephyr-export
+
+      - name: Debug SDK
+        run: |
+          echo $ZEPHYR_SDK_INSTALL_DIR
+          ls /opt/toolchains/
+
+      - name: Build sample (E8 DevKit)
+        run: |
+          export ZEPHYR_BASE=$PWD/zephyr
+          export ZEPHYR_SDK_INSTALL_DIR=/opt/toolchains/zephyr-sdk
+          west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he $PWD/../zephyr/samples/hello_world --pristine
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: e8-firmware
+          path: build/zephyr/*
