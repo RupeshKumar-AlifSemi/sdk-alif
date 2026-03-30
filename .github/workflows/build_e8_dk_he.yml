@@ -11,62 +11,98 @@ jobs:
     container:
       image: ghcr.io/zephyrproject-rtos/ci:latest
 
+    env:
+      ZEPHYR_SDK_VERSION: 0.16.5
+      ZEPHYR_SDK_INSTALL_DIR: /opt/zephyr-sdk
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.12
-         
+      - name: Verify Python
+        run: |
+          python3 --version
+          pip3 --version
+
       - name: Install west
         run: pip install west
 
-      - name: Initialize SDK workspace
+      - name: Initialize workspace
         run: |
           west init -l .
           west update
 
-      - name: Debug workspace
+      - name: Set Zephyr env
         run: |
-          pwd
-          ls 
+          echo "ZEPHYR_BASE=$PWD/../zephyr" >> $GITHUB_ENV
 
-      - name: Setup Zephyr environment
+      # ✅ Cache Zephyr SDK
+      - name: Cache Zephyr SDK
+        id: cache-sdk
+        uses: actions/cache@v4
+        with:
+          path: /opt/zephyr-sdk
+          key: zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}
+
+      - name: Install Zephyr SDK (if not cached)
+        if: steps.cache-sdk.outputs.cache-hit != 'true'
         run: |
-          pwd
-          export ZEPHYR_BASE=$PWD/../zephyr
-          export ZEPHYR_SDK_INSTALL_DIR=/opt/toolchains/zephyr-sdk
-          pip install -r $ZEPHYR_BASE/scripts/requirements.txt
-          west config zephyr.base $ZEPHYR_BASE
-
-      - name: Install Zephyr SDK
-        run: |
-          wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.5/zephyr-sdk-0.16.5_linux-x86_64.tar.xz
-          tar -xf zephyr-sdk-0.16.5_linux-x86_64.tar.xz
-          mv zephyr-sdk-0.16.5 /opt/zephyr-sdk
-
+          wget -q https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${ZEPHYR_SDK_VERSION}/zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-x86_64.tar.xz
+          tar -xf zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-x86_64.tar.xz
+          mv zephyr-sdk-${ZEPHYR_SDK_VERSION} /opt/zephyr-sdk
           /opt/zephyr-sdk/setup.sh -t all -h
 
-      - name: Build Hello World sample (Alif target boards)
+      - name: Install Python deps
         run: |
-          export ZEPHYR_BASE=$PWD/../zephyr
-          export ZEPHYR_SDK_INSTALL_DIR=/opt/zephyr-sdk
-          export CMAKE_PREFIX_PATH=/opt/zephyr-sdk/cmake 
+          pip install -r $ZEPHYR_BASE/scripts/requirements.txt
+
+      # ✅ Parallel build
+      - name: Build Hello World (parallel)
+        run: |
+          export CMAKE_PREFIX_PATH=$ZEPHYR_SDK_INSTALL_DIR/cmake
+
+          max_jobs=$(nproc)
+          echo "Using $max_jobs parallel jobs"
+
+          job_count=0
+
           west boards -n alif --format '{name} {qualifiers}' | while read -r name qualifiers; do
             echo "$qualifiers" | tr ',' '\n' | while read -r q; do
               case "$q" in
-                 *apss*) continue ;;
+                *apss*) continue ;;
               esac
+
               bd_name="$name/$q"
-              build_dir="build_${name}_${q}"
-              rm -rf build
-              west build -d "$build_dir" -b "$bd_name" $ZEPHYR_BASE/samples/hello_world --pristine
-              done
+              safe_name=$(echo "${name}_${q}" | tr '/ ' '__')
+              build_dir="build_${safe_name}"
+
+              (
+                echo "Building $bd_name"
+                rm -rf "$build_dir"
+                west build -d "$build_dir" -b "$bd_name" $ZEPHYR_BASE/samples/hello_world --pristine
+              ) &
+
+              job_count=$((job_count + 1))
+
+              if [ "$job_count" -ge "$max_jobs" ]; then
+                wait
+                job_count=0
+              fi
+            done
           done
 
+          wait
+          echo "All builds complete"
+
+      # ✅ Debug (optional but useful)
+      - name: Show build outputs
+        if: always()
+        run: |
+          echo "Artifacts:"
+          find build_* -type f | head -50
+
       - name: Upload firmware
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: hello-firmware
