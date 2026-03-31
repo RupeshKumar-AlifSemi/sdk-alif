@@ -2,6 +2,12 @@ name: Alif E8 DevKit CI
 
 on:
   push:
+    paths:
+      - '**.c'
+      - '**.h'
+      - 'CMakeLists.txt'
+      - 'prj.conf'
+      - '.github/workflows/**'
   pull_request:
 
 jobs:
@@ -19,24 +25,32 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      # ✅ Use container's Python
       - name: Verify Python
         run: |
           python3 --version
           pip3 --version
 
+      # ✅ Cache pip dependencies
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('**/requirements.txt') }}
+
       - name: Install west
-        run: pip install west
+        run: python3 -m pip install west
 
       - name: Initialize workspace
         run: |
           west init -l .
           west update
 
-      - name: Set Zephyr env
+      - name: Set Zephyr environment
         run: |
           echo "ZEPHYR_BASE=$PWD/../zephyr" >> $GITHUB_ENV
 
-      # ✅ Cache Zephyr SDK
+      # ✅ Cache Zephyr SDK (big speed win)
       - name: Cache Zephyr SDK
         id: cache-sdk
         uses: actions/cache@v4
@@ -52,16 +66,16 @@ jobs:
           mv zephyr-sdk-${ZEPHYR_SDK_VERSION} /opt/zephyr-sdk
           /opt/zephyr-sdk/setup.sh -t all -h
 
-      - name: Install Python deps
+      - name: Install Python dependencies
         run: |
-          pip install -r $ZEPHYR_BASE/scripts/requirements.txt
+          python3 -m pip install -r $ZEPHYR_BASE/scripts/requirements.txt
 
       # ✅ Parallel build
       - name: Build Hello World (parallel)
         run: |
           export CMAKE_PREFIX_PATH=$ZEPHYR_SDK_INSTALL_DIR/cmake
 
-          max_jobs=$(nproc)
+          max_jobs=4
           echo "Using $max_jobs parallel jobs"
 
           job_count=0
@@ -77,7 +91,7 @@ jobs:
               build_dir="build_${safe_name}"
 
               (
-                echo "Building $bd_name"
+                echo "[BUILD] $bd_name"
                 rm -rf "$build_dir"
                 west build -d "$build_dir" -b "$bd_name" $ZEPHYR_BASE/samples/hello_world --pristine
               ) &
@@ -92,18 +106,21 @@ jobs:
           done
 
           wait
-          echo "All builds complete"
+          echo "All builds completed"
 
-      # ✅ Debug (optional but useful)
+      # ✅ Debug output (helps when something breaks)
       - name: Show build outputs
         if: always()
         run: |
-          echo "Artifacts:"
+          echo "Artifacts found:"
           find build_* -type f | head -50
 
+      # ✅ Upload only useful firmware files
       - name: Upload firmware
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: hello-firmware
-          path: build_*
+          path: |
+            build_*/zephyr/*.bin
+            build_*/zephyr/*.elf
