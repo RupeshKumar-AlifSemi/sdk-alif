@@ -1,0 +1,126 @@
+name: Alif E8 DevKit CI
+
+on:
+  push:
+    paths:
+      - '**.c'
+      - '**.h'
+      - 'CMakeLists.txt'
+      - 'prj.conf'
+      - '.github/workflows/**'
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    container:
+      image: ghcr.io/zephyrproject-rtos/ci:latest
+
+    env:
+      ZEPHYR_SDK_VERSION: 0.16.5
+      ZEPHYR_SDK_INSTALL_DIR: /opt/zephyr-sdk
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # ✅ Use container's Python
+      - name: Verify Python
+        run: |
+          python3 --version
+          pip3 --version
+
+      # ✅ Cache pip dependencies
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('**/requirements.txt') }}
+
+      - name: Install west
+        run: python3 -m pip install west
+
+      - name: Initialize workspace
+        run: |
+          west init -l .
+          west update
+
+      - name: Set Zephyr environment
+        run: |
+          echo "ZEPHYR_BASE=$PWD/../zephyr" >> $GITHUB_ENV
+
+      # ✅ Cache Zephyr SDK (big speed win)
+      - name: Cache Zephyr SDK
+        id: cache-sdk
+        uses: actions/cache@v4
+        with:
+          path: /opt/zephyr-sdk
+          key: zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}
+
+      - name: Install Zephyr SDK (if not cached)
+        if: steps.cache-sdk.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${ZEPHYR_SDK_VERSION}/zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-x86_64.tar.xz
+          tar -xf zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-x86_64.tar.xz
+          mv zephyr-sdk-${ZEPHYR_SDK_VERSION} /opt/zephyr-sdk
+          /opt/zephyr-sdk/setup.sh -t all -h
+
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install -r $ZEPHYR_BASE/scripts/requirements.txt
+
+      # ✅ Parallel build
+      - name: Build Hello World (parallel)
+        run: |
+          export CMAKE_PREFIX_PATH=$ZEPHYR_SDK_INSTALL_DIR/cmake
+
+          max_jobs=4
+          echo "Using $max_jobs parallel jobs"
+
+          job_count=0
+
+          west boards -n alif --format '{name} {qualifiers}' | while read -r name qualifiers; do
+            echo "$qualifiers" | tr ',' '\n' | while read -r q; do
+              case "$q" in
+                *apss*) continue ;;
+              esac
+
+              bd_name="$name/$q"
+              safe_name=$(echo "${name}_${q}" | tr '/ ' '__')
+              build_dir="build_${safe_name}"
+
+              (
+                echo "[BUILD] $bd_name"
+                rm -rf "$build_dir"
+                west build -d "$build_dir" -b "$bd_name" $ZEPHYR_BASE/samples/hello_world --pristine
+              ) &
+
+              job_count=$((job_count + 1))
+
+              if [ "$job_count" -ge "$max_jobs" ]; then
+                wait
+                job_count=0
+              fi
+            done
+          done
+
+          wait
+          echo "All builds completed"
+
+      # ✅ Debug output (helps when something breaks)
+      - name: Show build outputs
+        if: always()
+        run: |
+          echo "Artifacts found:"
+          find build_* -type f | head -50
+
+      # ✅ Upload only useful firmware files
+      - name: Upload firmware
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hello-firmware
+          path: |
+            build_*/zephyr/*.bin
+            build_*/zephyr/*.elf
