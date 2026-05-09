@@ -1,0 +1,73 @@
+name: Alif E8 DevKit CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    container:
+      image: ghcr.io/zephyrproject-rtos/ci:latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.12
+         
+      - name: Install west
+        run: pip install west
+
+      - name: Initialize SDK workspace
+        run: |
+          west init -l .
+          west update
+
+      - name: Debug workspace
+        run: |
+          pwd
+          ls 
+
+      - name: Setup Zephyr environment
+        run: |
+          pwd
+          export ZEPHYR_BASE=$PWD/../zephyr
+          export ZEPHYR_SDK_INSTALL_DIR=/opt/toolchains/zephyr-sdk
+          pip install -r $ZEPHYR_BASE/scripts/requirements.txt
+          west config zephyr.base $ZEPHYR_BASE
+
+      - name: Install Zephyr SDK
+        run: |
+          wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.5/zephyr-sdk-0.16.5_linux-x86_64.tar.xz
+          tar -xf zephyr-sdk-0.16.5_linux-x86_64.tar.xz
+          mv zephyr-sdk-0.16.5 /opt/zephyr-sdk
+
+          /opt/zephyr-sdk/setup.sh -t all -h
+
+      - name: Build Hello World sample (Alif target boards)
+        run: |
+          export ZEPHYR_BASE=$PWD/../zephyr
+          export ZEPHYR_SDK_INSTALL_DIR=/opt/zephyr-sdk
+          export CMAKE_PREFIX_PATH=/opt/zephyr-sdk/cmake 
+          west boards -n alif --format '{name} {qualifiers}' | while read -r name qualifiers; do
+            echo "$qualifiers" | tr ',' '\n' | while read -r q; do
+              case "$q" in
+                 *apss*) continue ;;
+              esac
+              bd_name="$name/$q"
+              build_dir="build_${name}_${q}"
+              rm -rf build
+              west build -d "$build_dir" -b "$bd_name" $ZEPHYR_BASE/samples/hello_world --pristine
+              done
+          done
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: hello-firmware
+          path: build_*
