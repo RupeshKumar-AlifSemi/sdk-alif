@@ -19,6 +19,13 @@ There is also separate thread which updates LVGL graphics.
 Alif E7-DK HP & E8-DK HP & ARX3A0 serial camera & MW-405 display
 Alif E8-DK HP & OV5675 serial camera (+ISP) & MW-405 display
 
+## Prerequisites (TensorFlow Lite for Microcontrollers)
+To build the sample, you first need to pull in the optional dependencies by running the following commands:
+
+```
+west config manifest.group-filter -- +optional
+west update
+```
 
 ## Building OV5675 non-ISP configurations
 E7 does not have ISP.
@@ -27,6 +34,16 @@ Also E8 non-ISP configuration can be useful to apply own image manipulation oper
 frames.
 
 Pass `ov5675.conf` via `-DOVERLAY_CONFIG` to set the required buffer pool size (see build commands below).
+
+## Prerequisites
+Before building, set up the MLEK resources (downloads and Vela-compiles the ML models):
+```
+west config manifest.group-filter -- +optional
+west config manifest.project-filter -- +alif-mlek
+west update
+python3 modules/alif-mlek/set_up_default_resources.py
+```
+The model source code is generated automatically at CMake configure time.
 
 ## Building and running: E7-DK
 Build
