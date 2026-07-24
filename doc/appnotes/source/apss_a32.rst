@@ -107,7 +107,7 @@ configuration from the links below.
 
 **TF-A BL32 binary**
 
-- E8 DevKit: `bl32_e8.bin`_
+- E8 DevKit: `bl32_e8.bin`_ 
 - E7 DevKit: `bl32_e7.bin`_
 
 **SETOOLS JSON configuration** (common to both E7 and E8)
