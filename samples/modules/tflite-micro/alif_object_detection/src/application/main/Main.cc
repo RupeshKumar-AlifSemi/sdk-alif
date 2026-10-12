@@ -32,19 +32,23 @@
 #include <zephyr/console/console.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/display.h>
 #include <soc_common.h>
 #include <se_service.h>
 
 #define DISPLAY_NODE          DT_CHOSEN(zephyr_display)
 
 #if IS_ENABLED(CONFIG_CDC200)
-#define IS_ENABLED_CDC200 DT_NODE_HAS_COMPAT(DISPLAY_NODE, tes_cdc_2_1)
+#define IS_ENABLED_CDC200 \
+	(DT_NODE_HAS_COMPAT(DISPLAY_NODE, tes_cdc_2_1) && \
+	 DT_NODE_HAS_STATUS(DISPLAY_NODE, okay))
 #else
 #define IS_ENABLED_CDC200 0
 #endif
 
 #if IS_ENABLED(CONFIG_MIPI_DSI)
-#define IS_ENABLED_MIPI_DSI DT_HAS_ALIAS(mipi_dsi)
+#define IS_ENABLED_MIPI_DSI \
+	(DT_HAS_ALIAS(mipi_dsi) && DT_NODE_HAS_STATUS(DT_ALIAS(mipi_dsi), okay))
 #else
 #define IS_ENABLED_MIPI_DSI 0
 #endif
@@ -57,6 +61,24 @@
 #endif
 
 LOG_MODULE_REGISTER(Main);
+
+static void display_panel_on(void)
+{
+#if DT_NODE_HAS_STATUS(DT_ALIAS(panel), okay)
+	const struct device *panel_dev = DEVICE_DT_GET(DT_ALIAS(panel));
+
+	if (!device_is_ready(panel_dev)) {
+		LOG_WRN("Display panel device not ready");
+		return;
+	}
+
+	int ret = display_blanking_off(panel_dev);
+
+	if (ret) {
+		LOG_WRN("Display panel enable failed (%d), continuing", ret);
+	}
+#endif
+}
 
 extern void main_loop();
 
@@ -97,11 +119,12 @@ static int app_set_dsi_cdc()
 
 #if IS_ENABLED_CDC200
 	const struct device *display_dev = DEVICE_DT_GET(DISPLAY_NODE);
+	display_panel_on();
 	cdc200_set_enable(display_dev, true);
-	return 0;
 #endif
 
-	return -1;
+	/* All good or no display on this board (e.g. headless E1C StarterKit). */
+	return 0;
 }
 
 int main()
@@ -175,6 +198,28 @@ static int app_set_parameters(void)
 	 * CPI Pixel clock - Generate XVCLK. Used by ARX3A0 & OV5675 sensors.
 	 */
 	sys_write32(0x140001, CLKCTRL_PER_MST_CAMERA_PIXCLK_CTRL);
+#endif
+
+#if (DT_NODE_HAS_STATUS(DT_NODELABEL(lpcam), okay))
+	/*
+	 * Enable the on-board camera level translator/buffer on the E1C StarterKit.
+	 */
+#if defined(CONFIG_BOARD_ALIF_E1C_SK) && DT_NODE_HAS_STATUS(DT_NODELABEL(gpio3), okay)
+	const struct device *cam_buf_en = DEVICE_DT_GET(DT_NODELABEL(gpio3));
+
+	if (device_is_ready(cam_buf_en)) {
+		gpio_pin_configure(cam_buf_en, 2, GPIO_OUTPUT_ACTIVE);
+	} else {
+		LOG_ERR("Camera level-translator GPIO (gpio3) not ready.");
+	}
+#endif
+
+	/*
+	 * LP-CAM (LPCPI) Pixel clock - Generate XVCLK for the parallel
+	 * camera sensor (e.g. OV5640) on the E1C StarterKit.
+	 * Some of the Arducam boards have onboard oscillator, but others don't.
+	 */
+	sys_write32(0x080001, M55HE_CFG_HE_CAMERA_PIXCLK);
 #endif
 
 	return 0;

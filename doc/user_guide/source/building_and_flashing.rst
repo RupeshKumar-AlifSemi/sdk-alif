@@ -5,13 +5,16 @@ Setting Up and Building Zephyr Applications
 
 This guide covers:
 
+- Setting up the host system.
+- Fetching and installing the Alif Zephyr SDK.
 - Building a sample application.
+- Flashing and debugging an application.
 
 .. note::
-   Examples in this document use the Ensemble E7 DevKit unless otherwise specified.
+   Examples in this document use the Alif E7 DevKit unless otherwise specified.
 
 Setting Up the Host System
-------------------------------
+--------------------------
 
 Follow these steps to install dependencies and configure the environment for the Alif SDK.
 
@@ -21,20 +24,19 @@ Follow these steps to install dependencies and configure the environment for the
 
       sudo apt update -y
 
-2. Install required dependencies using ``apt``:
+2. Install the required dependencies:
 
    .. code-block:: console
 
-     sudo apt install -y --no-install-recommends \
-     python3-dev python3-pip python3-venv \
-     git wget xz-utils file make \
-     python3-setuptools python3-wheel \
-     ninja-build build-essential cmake libmagic1
+      sudo apt install -y --no-install-recommends \
+         python3-dev python3-pip python3-venv \
+         git wget xz-utils file make \
+         python3-setuptools python3-wheel \
+         ninja-build build-essential cmake libmagic1
 
+3. Create and activate a Python virtual environment.
 
-3. Create and activate a Python virtual environment:
-
-   a. Create the virtual environment if not already set up:
+   a. Create the virtual environment:
 
       .. code-block:: console
 
@@ -46,67 +48,118 @@ Follow these steps to install dependencies and configure the environment for the
 
          source ~/zephyrproject/.venv/bin/activate
 
-      Your shell prompt will show ``(.venv)`` when activated.
+      Your shell prompt displays ``(.venv)`` when the environment is active.
 
       .. note::
-         Activate the virtual environment in every new terminal session before running
-         Python or ``west`` commands. Deactivate with ``deactivate`` when done.
 
-4. Install Python packages:
+         Activate the virtual environment in every new terminal session before
+         running Python or ``west`` commands. When finished, deactivate it by
+         running:
+
+         .. code-block:: console
+
+            deactivate
+
+4. Install the required Python packages:
 
    .. code-block:: console
 
       pip install west pyelftools
 
-Fetching and installing the Alif Zephyr SDK
-----------------------------------------------
 
-This section explains how to build Zephyr using the GCC toolchain. For details on
-toolchain selection, refer to Zephyr's documentation:
+Fetching and Installing the Alif Zephyr SDK
+-------------------------------------------
+
+This section explains how to fetch the Alif Zephyr SDK and install the required
+components for building Zephyr applications. For information about supported
+toolchains, refer to Zephyr's documentation:
 `Toolchain Selection <https://docs.zephyrproject.org/latest/develop/toolchains/index.html>`_.
 
-Fetch the SDK source from the ``main`` branch:
+1. Create a workspace:
 
-.. code-block:: console
+   .. code-block:: console
 
-   mkdir sdk-alif
-   cd sdk-alif
-   west init -m https://github.com/alifsemi/sdk-alif --mr ${revision}
-   west update
+      mkdir sdk-alif
+      cd sdk-alif
 
-Replace ``${revision}`` with the desired SDK revision (branch, tag, or commit SHA).
-Use ``main`` for the latest state, or specify a commit SHA or tag.
+2. Initialize the workspace:
 
-**Syntax:**
+   .. code-block:: console
 
-.. code-block:: console
+      west init -m https://github.com/alifsemi/sdk-alif --mr ${REVISION}
 
-   west init -m <URL> --mr <REVISION>
+   Replace ``${REVISION}`` with the required SDK revision (branch, tag, or
+   commit SHA). For available branches, tags, and commits, see the
+   `Alif SDK repository <https://github.com/alifsemi/sdk-alif>`_.
+   Use ``main`` for the latest development branch.
 
-**Example:**
+   **Syntax:**
 
-.. code-block:: console
+   .. code-block:: console
 
-   west init -m https://github.com/alifsemi/sdk-alif --mr v2.2.0-zas-branch
+      west init -m <URL> --mr <REVISION>
 
-**Install required Python packages for building:**
+   **Example:**
 
-.. code-block:: console
+   .. code-block:: console
 
-   pip install -r zephyr/scripts/requirements.txt
+      west init -m https://github.com/alifsemi/sdk-alif --mr v2.0.0
 
-**Install sdk:**
+   .. note::
 
-.. code-block:: console
+      If ``west init`` fails because an incorrect revision was specified,
+      the ``.west`` workspace may still be created. Remove it before retrying.
 
-   west sdk install
+      .. code-block:: console
+
+         rm -rf .west
+
+3. Fetch all dependency repositories defined in the west manifest:
+
+   .. code-block:: console
+
+      west update
+
+   .. note::
+
+      To switch to a different SDK branch after the workspace has been
+      initialized, navigate to the alif repository directory within the
+      workspace:
+
+      .. code-block:: console
+
+         cd alif
+         git fetch
+         git checkout <branch-name>
+         git pull
+         west update
+
+4. Install the Python packages required by Zephyr's build system.
+
+   These packages are used by Zephyr for building, flashing, and debugging.
+
+   .. code-block:: console
+
+      pip install -r zephyr/scripts/requirements.txt
+
+5. Install the Zephyr SDK.
+
+   This installs the GCC cross-compilation toolchain required to build Zephyr
+   applications.
+
+   .. code-block:: console
+
+      west sdk install
 
 
 Building an Application
 -----------------------
 
 Supported Board Targets as per new hardware model v2 (Zephyr v4.1.0 and onwards):
-<board name[@revision][/board qualifiers]>
+
+::
+
+   <board name[@revision][/board qualifiers]>
 
 - alif_e7_dk/ae722f80f55d5xx/rtss_he
 - alif_e7_dk/ae722f80f55d5xx/rtss_hp
@@ -133,14 +186,14 @@ a. Navigate to the Zephyr directory:
 
       cd zephyr
 
-b. Build the Hello World application:
+b. Build the Hello World application.
 
-   An application that prints a "Hello World" message along with the board name.
-   By default, code execution takes place from MRAM.
+   The Hello World application prints a greeting message along with the board
+   name. By default, the application executes from MRAM.
 
 **RTSS-HE**
 
-- Build for MRAM (Address: 0x80000000):
+- Build for MRAM (Address: ``0x80000000``):
 
   .. code-block:: console
 
@@ -157,10 +210,9 @@ b. Build the Hello World application:
        -DCONFIG_FLASH_LOAD_OFFSET=0 \
        -DCONFIG_FLASH_SIZE=256
 
-
 **RTSS-HP**
 
-- Build for MRAM (Address: 0x80200000):
+- Build for MRAM (Address: ``0x80200000``):
 
   .. code-block:: console
 
@@ -177,10 +229,14 @@ b. Build the Hello World application:
        -DCONFIG_FLASH_LOAD_OFFSET=0 \
        -DCONFIG_FLASH_SIZE=256
 
-
 .. note::
-   By default, Ninja is used. To switch to Unix Makefiles, add the following option:
-   ``-- -G "Unix Makefiles"``
+
+   Ninja is used as the default build system. To use Unix Makefiles instead,
+   append the following option to the ``west build`` command:
+
+   .. code-block:: console
+
+      -- -G "Unix Makefiles"
 
 
 Flashing the Application
@@ -208,13 +264,7 @@ for SE-UART device communication.
       If the device is still not recognized, check for loose connections or try a
       different USB port.
 
-2. Install the ``fdt`` Python module:
-
-   .. code-block:: console
-
-      pip install fdt
-
-3. Set up the Alif Security Toolkit:
+2. Set up the Alif Security Toolkit:
 
    Extract the toolkit and export its directory before running ``west flash``.
    Ensure the toolkit is properly configured for your DevKit.
@@ -223,7 +273,13 @@ for SE-UART device communication.
 
       export ALIF_SE_TOOLS_DIR=path/of/extracted/directory
 
-4. Set device permissions:
+   **Example:**
+
+   .. code-block:: console
+
+      export ALIF_SE_TOOLS_DIR=/home/<username>/app-release-exec-linux-SE_FW_1.112.00_DEV
+
+3. Set device permissions:
 
    .. note::
 
@@ -234,7 +290,7 @@ for SE-UART device communication.
 
       sudo chmod 666 /dev/ttyACM0
 
-5. Flash the application:
+4. Flash the application:
 
    From the Zephyr build directory, rebuild the binary and flash it to your board:
 
@@ -252,7 +308,7 @@ for SE-UART device communication.
 
       west flash --com-port=ACM0
 
-6. Debug the application:
+5. Debug the application:
 
    From the zephyr build directory, start a debug session on your board:
 
@@ -260,7 +316,7 @@ for SE-UART device communication.
 
       west debug
 
-7. The application boots automatically:
+6. The application boots automatically:
 
    a. Open a serial console application on the host PC with a baud rate of 115200.
 
@@ -275,3 +331,126 @@ for SE-UART device communication.
 
          *** Booting Zephyr OS build 4b48dd532761 ****
          Hello World! alif_e7_devkit
+
+
+Advanced Multicore Flash Support (Ensemble DevKit Only)
+-----------------------------------------------------------
+
+For multicore applications on the Alif Ensemble DevKit, additional binaries
+can be programmed for multiple CPU cores in a single flash operation.
+
+.. note::
+
+   Multicore boot was tested minimally and does not yet cover the full range
+   of core and boot-mode combinations.
+
+The supported CPU cores are:
+
+- Cortex-M55 HE
+- Cortex-M55 HP
+- Cortex-A32
+
+**CPU Binary Options**
+
+The following example programs the binary generated by the current build target
+along with the specified HP binary.
+
+Example:
+
+.. code-block:: console
+
+   west flash --hp-bin ./myprebuild_bins/hp.bin
+
+Use the following options to specify binaries for CPU cores other than the
+current build target.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Option
+     - Description
+   * - ``--he-bin <file>``
+     - Specifies the binary for the Cortex-M55 HE core.
+   * - ``--hp-bin <file>``
+     - Specifies the binary for the Cortex-M55 HP core.
+   * - ``--a32-bin <file>``
+     - Specifies the binary for the Cortex-A32 core.
+
+.. note::
+
+   The binary generated by the current build target is always programmed.
+   Additional CPU binaries can be programmed using the options listed above.
+
+**MRAM Boot**
+
+The following example programs the specified HP binary and boots it directly
+from MRAM.
+
+Example:
+
+.. code-block:: console
+
+   west flash \
+     --hp-bin ./myprebuild_bins/hp.bin --hp-mram-boot 1
+
+Use the corresponding core-specific ``--*-mram-boot`` option with a value of ``1`` (for example, ``--hp-mram-boot 1``) to boot that core's application directly from MRAM.
+For Cortex-A32, the Zephyr image executes XIP from MRAM by design.
+
+The default MRAM boot addresses are:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - CPU Core
+     - Default MRAM Boot Address
+   * - Cortex-M55 HE
+     - ``0x80000000``
+   * - Cortex-A32
+     - ``0x80100000``
+   * - Cortex-M55 HP
+     - ``0x80200000``
+
+**ITCM Boot**
+
+The following example demonstrates the default boot behavior. Since the
+``--hp-mram-boot`` option is not specified, the specified HP binary is loaded
+into TCM and boots using the default boot mode.
+
+Example:
+
+.. code-block:: console
+
+   west flash --hp-bin ./myprebuild_bins/hp.bin
+
+By default, additional CPU binaries provided via ``--*-bin`` are loaded into TCM and booted from it.
+The corresponding ``--*-mram-boot 1`` option is only required when booting a specified CPU binary directly from MRAM.
+
+The default TCM load addresses are:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - CPU Core
+     - Default TCM Load Address
+   * - Cortex-M55 HE
+     - ``0x58000000``
+   * - Cortex-M55 HP
+     - ``0x50000000``
+
+.. note::
+
+   Specify ``--*-mram-boot 1`` only when booting an application directly from
+   MRAM. Otherwise, the application is loaded into TCM and boots using the
+   default boot mode.
+
+**Console Output**
+
+After flashing, the programmed applications boot automatically. Open the
+appropriate serial console for each CPU core to observe the application output.
+
+When multiple CPU binaries are programmed, the console output from each
+application can be observed on its corresponding serial port.
+

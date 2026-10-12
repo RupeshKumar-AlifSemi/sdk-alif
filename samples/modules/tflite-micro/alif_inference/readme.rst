@@ -11,12 +11,12 @@ This sample demonstrates how to use a generic inference runner to perform Keywor
 Requirements
 ************
 
-- Alif Ensemble or Balletto Development Kit
+- Alif Ensemble or Balletto Development Kit / Application Kit
 
 Building and Running
 ********************
 
-This sample is located at :zephyr_file:`samples/modules/tflite-micro/alif_kws` in the sdk-alif tree.
+This sample is located at :zephyr_file:`samples/modules/tflite-micro/alif_inference` in the sdk-alif tree.
 
 To build the sample, you first need to pull in the optional dependencies by running the following commands:
 
@@ -24,3 +24,31 @@ To build the sample, you first need to pull in the optional dependencies by runn
 
    west config manifest.group-filter -- +optional
    west update
+
+To build the sample for the **U55** version version on E8-DK:
+
+.. code-block:: console
+
+   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he -S ethos-u55-enable samples/modules/tflite-micro/alif_inference
+   west flash
+
+To build the sample for the **U55** version on E8-AK:
+
+.. code-block:: console
+
+   west build -b alif_e8_ak/ae822fa0e5597xx0/rtss_he -S ethos-u55-enable samples/modules/tflite-micro/alif_inference
+   west flash
+
+To build the sample for the **U85** version on E8-DK:
+
+.. code-block:: console
+
+   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he samples/modules/tflite-micro/alif_inference -S ethos-u85-enable -- -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
+   west flash
+
+To build the sample for the **U85** version on E8-AK:
+
+.. code-block:: console
+
+   west build -b alif_e8_ak/ae822fa0e5597xx0/rtss_he samples/modules/tflite-micro/alif_inference -S ethos-u85-enable -- -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
+   west flash

@@ -1,0 +1,29 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+#include "alif_e8_common.overlay"
+/ {
+	aliases {
+		pdm-audio = &lppdm;
+		i2s-mic = &i2s4;
+		i2s-output = &i2s3;
+	};
+};
+
+&lppdm {
+	status = "okay";
+};
+
+&i2s4 {
+	status = "okay";
+};
+
+&i2s3 {
+	status = "okay";
+};

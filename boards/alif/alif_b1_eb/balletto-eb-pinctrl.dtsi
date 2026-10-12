@@ -69,11 +69,29 @@
 		};
 	};
 
+	pinctrl_ut0_sleep: pinctrl_utimer0_sleep {
+		group0 {
+			pinmux = <PIN_P4_0__GPIO>,
+				 <PIN_P4_1__GPIO>;
+			read-enable = <0x1>;
+			driver-state-control = <2>; /* pull-down */
+		};
+	};
+
 	pinctrl_ut1: pinctrl_utimer1 {
 		group0 {
 			pinmux = <PIN_P6_2__UT1_T0_B>,
 				 <PIN_P6_3__UT1_T1_B>;
 			read-enable = <0x1>;
+		};
+	};
+
+	pinctrl_ut1_sleep: pinctrl_utimer1_sleep {
+		group0 {
+			pinmux = <PIN_P6_2__GPIO>,
+				 <PIN_P6_3__GPIO>;
+			read-enable = <0x1>;
+			driver-state-control = <2>; /* pull-down */
 		};
 	};
 
@@ -85,11 +103,29 @@
 		};
 	};
 
+	pinctrl_ut2_sleep: pinctrl_utimer2_sleep {
+		group0 {
+			pinmux = <PIN_P4_4__GPIO>,
+				 <PIN_P4_5__GPIO>;
+			read-enable = <0x1>;
+			driver-state-control = <2>; /* pull-down */
+		};
+	};
+
 	pinctrl_ut3: pinctrl_utimer3 {
 		group0 {
 			pinmux = <PIN_P4_6__UT3_T0_A>,
 				 <PIN_P4_7__UT3_T1_A>;
 			read-enable = <0x1>;
+		};
+	};
+
+	pinctrl_ut3_sleep: pinctrl_utimer3_sleep {
+		group0 {
+			pinmux = <PIN_P4_6__GPIO>,
+				 <PIN_P4_7__GPIO>;
+			read-enable = <0x1>;
+			driver-state-control = <2>; /* pull-down */
 		};
 	};
 
@@ -245,6 +281,23 @@
 		};
 	};
 
+	pinctrl_i3c0_sleep: pinctrl_i3c0_sleep {
+		group0 {
+			pinmux = <PIN_P0_6__GPIO>,
+				 <PIN_P0_5__GPIO>;
+			read-enable = <0x1>;
+			driver-state-control = <0x2>;
+		};
+	};
+
+	pinctrl_i3c0_recovery: pinctrl_i3c0_recovery {
+		group0 {
+			pinmux = <PIN_P0_6__GPIO>,
+				<PIN_P0_5__GPIO>;
+			read-enable = <0x1>;
+		};
+	};
+
 	pinctrl_can0: pinctrl_can0 {
 		group0 {
 			pinmux = <PIN_P8_2__CAN0_RXD_C>,
@@ -275,6 +328,18 @@
 		};
 	};
 
+	pinctrl_adc0_sleep:pinctrl_adc0_sleep {
+		group0 {
+			pinmux = <PIN_P0_0__GPIO>,
+			<PIN_P0_1__GPIO>,
+			<PIN_P0_2__GPIO>,
+			<PIN_P0_3__GPIO>,
+			<PIN_P0_4__GPIO>,
+			<PIN_P0_5__GPIO>;
+			read-enable = <0x1>;
+		};
+	};
+
 	pinctrl_adc1:pinctrl_adc1 {
 		group0 {
 			pinmux = <PIN_P0_6__ANA_S6>,
@@ -283,6 +348,18 @@
 			<PIN_P2_5__ANA_S13>,
 			<PIN_P2_6__ANA_S14>,
 			<PIN_P2_7__ANA_S15>;
+			read-enable = <0x1>;
+		};
+	};
+
+	pinctrl_adc1_sleep:pinctrl_adc1_sleep {
+		group0 {
+			pinmux = <PIN_P0_6__GPIO>,
+			<PIN_P0_7__GPIO>,
+			<PIN_P2_4__GPIO>,
+			<PIN_P2_5__GPIO>,
+			<PIN_P2_6__GPIO>,
+			<PIN_P2_7__GPIO>;
 			read-enable = <0x1>;
 		};
 	};
@@ -342,6 +419,20 @@
 				 <PIN_P5_7__LPPDM_D1_C>,
 				 <PIN_P7_5__LPPDM_D2_C>,
 				 <PIN_P7_7__LPPDM_D3_C>;
+			read-enable = <0x1>;
+		};
+	};
+
+	pinctrl_lppdm_sleep: pinctrl_lppdm_sleep {
+		group0 {
+			pinmux = <PIN_P5_4__GPIO>,
+				 <PIN_P5_5__GPIO>,
+				 <PIN_P7_4__GPIO>,
+				 <PIN_P7_6__GPIO>,
+				 <PIN_P5_6__GPIO>,
+				 <PIN_P5_7__GPIO>,
+				 <PIN_P7_5__GPIO>,
+				 <PIN_P7_7__GPIO>;
 			read-enable = <0x1>;
 		};
 	};
@@ -708,4 +799,9 @@
 			drive-strength = <8>;
 		};
 	};
+};
+
+&i3c0 {
+	scl-gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
+	sda-gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
 };

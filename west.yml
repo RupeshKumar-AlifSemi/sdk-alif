@@ -25,9 +25,10 @@ manifest:
   #
   # Please add items below based on alphabetical order
   projects:
+
     - name: zephyr
       repo-path: zephyr_alif
-      revision: c3727a63885227b97902c263df76881960ae7f06
+      revision: a23f830d090df1cd51f2fb47f4ac3ba7cb7db89f
       import:
         # In addition to the zephyr repository itself,
         # Alif SDK fetches the needed projects
@@ -76,16 +77,16 @@ manifest:
       revision: 85f6b92af0f6ac72594d391f895c45cc30847e41
       path: modules/hal/cmsis
       groups:
-        - hal
+         - hal
 
     - name: hal_infineon
-      remote: zephyrproject
-      revision: 470f874ce432763a2b82cd322d0ff6efc89240cd
+      remote: alif
+      revision: a326c0de2bdcb206319098a5f039fcd952581d62
       path: modules/hal/infineon
 
     - name: dave2d
       repo-path: alif_dave2d-driver
-      revision: d667a8e47f13e2f39bc724d66def5230827b2808
+      revision: bc493d71872aade28922c8bd790ec1ebe032359c
       path: modules/drivers/dave2d
 
     - name: aipl

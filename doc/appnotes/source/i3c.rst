@@ -36,7 +36,6 @@ The following I3C features are currently supported by the Alif driver:
 
 .. include:: prerequisites.rst
 
-
 Hardware Requirements and Setup
 ----------------------------------
 
@@ -49,7 +48,7 @@ Hardware Requirements and Setup
 Hardware Connection & Setup
 ---------------------------
 
-Select a board equipped with the BMI323 (IMU sensor) I3C slave, such as the Alif Ensemble DevKit (E7, Appkit configuration) or Spark E1C DevKit.
+Select a board equipped with the BMI323 (IMU sensor) I3C slave, such as the Alif E7 DevKit (AppKit configuration) or Alif E1C DevKit.
 
 .. note::
     The SCL and SDA lines are internally connected, so no external connection is required.
@@ -78,12 +77,11 @@ Build an I3C Application with Zephyr
 
 Follow these steps to build the I3C application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
-
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the M55 HP core:
 
@@ -94,7 +92,6 @@ Follow these steps to build the I3C application using the Alif Zephyr SDK:
      samples/sensor/bmi323 \
      -S alif-dk-ak
 
-
 3. Build command for application on the M55 HE core:
 
 .. code-block:: console
@@ -104,13 +101,12 @@ Follow these steps to build the I3C application using the Alif Zephyr SDK:
      samples/sensor/bmi323 \
      -S alif-dk-ak
 
-
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ==============================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -144,4 +140,98 @@ Console Output
 Observation
 -----------
 
-Upon reviewing the output logs, it can be concluded that the I3C functionality has been successfully validated with the ICM42670P IMU sensor.
+Upon reviewing the output logs, it can be concluded that the I3C functionality has been successfully validated with the BMI323 IMU sensor.
+
+I3C Power Management Application
+================================
+
+``samples/sensor/bmi323_pm`` walks Alif power-management states and polls
+the same on-board BMI323 over I3C after each wake. Hardware, pinmux and
+the ``alif-dk-ak`` overlay are unchanged from the sample above. The SoC
+is woken by the RTC (EWIC). The sensor GPIO INT pin is not used (it is
+not LPGPIO and cannot wake STOP/S2RAM).
+
+Sequence (HE TCM / E8 SRAM0 boot)::
+
+  BMI323 poll
+  RUNTIME_IDLE  (~18 s)  -> poll
+  SUSPEND_TO_IDLE        -> poll
+  S2RAM STANDBY (~6 s)   -> poll
+  S2RAM STOP    (~9 s)   -> poll
+
+MRAM boot and HP without SRAM0 use SOFT_OFF instead of S2RAM (the
+system resets on wake).
+
+.. note::
+   Do not leave a debugger attached if you want STOP/SOFT_OFF; it holds
+   the core out of those states.
+
+Build command for the M55 HE core (TCM boot S2RAM):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/sensor/bmi323_pm \
+     -S alif-dk-ak -S pm-system-off-s2ram-tcm
+
+Build command for the M55 HP core (MRAM boot SOFT_OFF; use
+``pm-system-off-mram``). HE MRAM boot uses the same snippet:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/sensor/bmi323_pm \
+     -S alif-dk-ak -S pm-system-off-mram
+
+Flash with ``west flash`` as above. Example console output from
+``alif_e8_dk`` RTSS_HE, TCM boot (other boards follow the same
+sequence; accel/gyro values vary):
+
+.. code-block:: console
+
+    *** Booting Zephyr OS build c7432c33430e ***
+    Device 0xf4b0 name is bmi323@69000003b810431000
+    [00:00:00.032,000] <inf> bmi323_pm: alif_e8_dk (S2RAM): BMI323 PM states demo (RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM STANDBY, S2RAM STOP)
+    [00:00:00.045,000] <inf> bmi323_pm: --- BMI323 poll before sleep ---
+    Accel AX: 0.021350; AY: -0.010675; AZ: 0.978623 g        Gyro GX: 0.106813; GY: 0.457770; GZ: -0.289921 deg/s
+    [00:00:00.099,000] <inf> bmi323_pm: POWER STATE SEQUENCE:
+    [00:00:00.105,000] <inf> bmi323_pm:   1. PM_STATE_RUNTIME_IDLE
+    [00:00:00.111,000] <inf> bmi323_pm:   2. PM_STATE_SUSPEND_TO_IDLE
+    [00:00:00.117,000] <inf> bmi323_pm:   3. PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY)
+    [00:00:00.126,000] <inf> bmi323_pm:   4. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)
+    [00:00:00.134,000] <inf> bmi323_pm:   5. (SOFT_OFF skipped - using retention)
+    [00:00:00.141,000] <inf> bmi323_pm: Enter RUNTIME_IDLE sleep for (18000000 microseconds)
+    [00:00:18.151,000] <inf> bmi323_pm: Exited from RUNTIME_IDLE sleep
+    [00:00:18.157,000] <inf> bmi323_pm: --- BMI323 poll after RUNTIME_IDLE ---
+    Accel AX: 0.022448; AY: -0.012383; AZ: 0.979111 g        Gyro GX: 0.076295; GY: 0.457770; GZ: -0.244144 deg/s
+    [00:00:18.184,000] <inf> bmi323_pm: Enter PM_STATE_SUSPEND_TO_IDLE for (10000 microseconds)
+    [00:00:18.206,000] <inf> bmi323_pm: Exited from PM_STATE_SUSPEND_TO_IDLE
+    [00:00:18.213,000] <inf> bmi323_pm: --- BMI323 poll after SUSPEND_TO_IDLE ---
+    Accel AX: 0.023607; AY: -0.010614; AZ: 0.978379 g        Gyro GX: 0.045777; GY: 0.442511; GZ: -0.335698 deg/s
+    [00:00:18.240,000] <inf> bmi323_pm: Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (6000000 microseconds)
+    [00:00:24.253,000] <inf> bmi323_pm: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===
+    [00:00:24.292,000] <inf> bmi323_pm: Main thread running - iteration 0 - tick: 24292
+    [00:00:26.303,000] <inf> bmi323_pm: Main thread running - iteration 1 - tick: 26303
+    [00:00:28.313,000] <inf> bmi323_pm: Main thread running - iteration 2 - tick: 28313
+    [00:00:30.324,000] <inf> bmi323_pm: --- BMI323 poll after S2RAM (STANDBY) ---
+    Accel AX: 0.023363; AY: -0.011651; AZ: 0.978806 g        Gyro GX: 0.000000; GY: 0.473029; GZ: -0.244144 deg/s
+    [00:00:30.358,000] <inf> bmi323_pm: Enter PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) for (9000000 microseconds)
+    [00:00:39.371,000] <inf> bmi323_pm: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) ===
+    [00:00:39.410,000] <inf> bmi323_pm: Main thread running - iteration 0 - tick: 39410
+    [00:00:41.421,000] <inf> bmi323_pm: Main thread running - iteration 1 - tick: 41421
+    [00:00:43.431,000] <inf> bmi323_pm: Main thread running - iteration 2 - tick: 43431
+    [00:00:45.442,000] <inf> bmi323_pm: --- BMI323 poll after S2RAM (STOP) ---
+    Accel AX: 0.021228; AY: -0.011590; AZ: 0.980148 g        Gyro GX: 0.061036; GY: 0.411993; GZ: -0.320439 deg/s
+    [00:00:45.476,000] <inf> bmi323_pm: Skipping PM_STATE_SOFT_OFF (using retention instead)
+    [00:00:45.484,000] <inf> bmi323_pm: === BMI323 PM TEST COMPLETED ===
+
+See ``samples/sensor/bmi323_pm/README.rst`` for the MRAM/HP SOFT_OFF log.
+
+PM observation
+--------------
+
+A valid BMI323 sample after each listed power state means the I3C
+controller resumed (clock, DAT, dynamic address) and the target was
+reachable over I3C.

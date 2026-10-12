@@ -1,6 +1,6 @@
 # Alif Zephyr port of Arm® Ethos™-U NPU Object Detection example
 
-## Description of the Arm® example 
+## Description of the Arm® example
 Object Detection is a classical computer vision use case in which specific objects need to be identified and located within a full frame. In this specific example the model was trained for face detection. The ML sample was developed using the YOLO Fastest model. To adopt the model for low power / low memory systems the input images to the model are monochrome images. The model was trained on the Wider dataset (after conversion from RGB to monochrome) and on Emza Visual-Sense dataset <www.emza-vs.com>. The model makes detection faces in size of 20x20 pixels and above.
 
 ## The port
@@ -16,24 +16,11 @@ The example runs ObjectDetectionHandler() in a loop. They key steps are:
 There is also separate thread which updates LVGL graphics.
 
 ## Supported hardware
-Alif E7-DK HP & E8-DK HP & ARX3A0 serial camera & MW-405 display
-Alif E8-DK HP & OV5675 serial camera (+ISP) & MW-405 display
-
-## Prerequisites (TensorFlow Lite for Microcontrollers)
-To build the sample, you first need to pull in the optional dependencies by running the following commands:
-
-```
-west config manifest.group-filter -- +optional
-west update
-```
-
-## Building OV5675 non-ISP configurations
-E7 does not have ISP.
-
-Also E8 non-ISP configuration can be useful to apply own image manipulation operations on the captured
-frames.
-
-Pass `ov5675.conf` via `-DOVERLAY_CONFIG` to set the required buffer pool size (see build commands below).
+- Alif E7-DK HP & E8-DK HP & ARX3A0 serial camera & MW-405 display
+- Alif E7-DK HP & E8-DK HP & MT9M114 MIPI serial camera (+ISP on E8) & MW-405 display
+- Alif E8-DK HP & OV5675 serial camera (+ISP) & MW-405 display
+- Alif E8-AK HP & OV5675 serial camera (non-ISP) & MW-405 display
+- Alif StartKit-E1C & ov5640 without display
 
 ## Prerequisites
 Before building, set up the MLEK resources (downloads and Vela-compiles the ML models):
@@ -45,16 +32,41 @@ python3 modules/alif-mlek/set_up_default_resources.py
 ```
 The model source code is generated automatically at CMake configure time.
 
+## Building OV5675 non-ISP configurations
+E7 does not have ISP.
+
+Also E8 non-ISP configuration can be useful to apply own image manipulation operations on the captured
+frames.
+
+Pass `ov5675.conf` via `-DOVERLAY_CONFIG` to set the required buffer pool size (see build commands below).
+
 ## Building and running: E7-DK
-Build
+arx3a0:
 ```
 west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_arx3a0.overlay serial_camera.overlay"
 ```
 
+mt9m114:
+```
+west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_mt9m114.overlay serial_camera.overlay" -DOVERLAY_CONFIG="mt9m114.conf"
+```
+
 ## Building and running: E8-DK
+Note: The build commands below are for U55. To build the same examples for U85, replace `-S ethos-u55-enable` with `-S ethos-u85-enable` and add `-DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256` to the `west build` command.
+
 arx3a0:
 ```
 west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_arx3a0_selfie.overlay serial_camera.overlay"
+```
+
+mt9m114:
+```
+west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_mt9m114.overlay serial_camera.overlay" -DOVERLAY_CONFIG="mt9m114.conf"
+```
+
+mt9m114 & ISP:
+```
+west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection -- -DEXTRA_DTC_OVERLAY_FILE="serial_camera_mt9m114.overlay serial_camera_isp.overlay serial_camera_mt9m114_isp.overlay" -DOVERLAY_CONFIG="mt9m114.conf;isp.conf"
 ```
 
 arx3a0 & ISP:
@@ -70,6 +82,21 @@ west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable   samples/
 ov5675 & ISP:
 ```
 west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable   samples/modules/tflite-micro/alif_object_detection --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_ov5675_selfie.overlay serial_camera_isp.overlay" -DOVERLAY_CONFIG="isp.conf"
+```
+
+## Building and running: E8-AK
+Note: The build command below is for U55.
+
+ov5675 & ISP:
+```
+west build -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection -- -DEXTRA_DTC_OVERLAY_FILE="serial_camera_ov5675_selfie.overlay serial_camera_isp.overlay" -DOVERLAY_CONFIG="isp.conf"
+```
+## Building and running: StartKit-E1C
+StartKit-E1C has no display
+
+ov5640:
+```
+west build -b alif_e1c_sk/ae1c1f4051920hh/rtss_he -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection -- -DEXTRA_DTC_OVERLAY_FILE="parallel_camera_ov5640.overlay" -DOVERLAY_CONFIG="ov5640.conf"
 ```
 
 ## Expected output
